@@ -1,0 +1,7 @@
+services:
+  pico-dev:
+    build: .
+    container_name: pico-dev
+    volumes:
+      - .:/workspace
+    tty: true

@@ -1,48 +1,100 @@
-# pico-hid
+# pico-vsp
 
-Raspberry Pi Pico を USB 複合デバイスとして動かし、以下の 3 つを PC に対して公開するリポジトリです。
+Raspberry Pi Pico を USB 複合 CDC デバイスとして動作させ、2つのシリアルポート間の透過中継とトラフィックキャプチャを実現するツールです。
 
-- HID キーボード
-- HID マウス
-- CDC シリアルポート
+## 構成
 
-起動後は USB デバイスとして待機し、シリアルポート経由でコマンドを受信するまではキーボード入力やマウス操作を行いません。
+```
+pico-vsp/
+├── firmware/   # Pico ファームウェア（C）
+├── host/       # ホスト側ブリッジスクリプト（Python）
+├── README.md
+└── SPEC.md
+```
 
-## できること
+## USBデバイス構成
 
-シリアルポートに改行区切りでコマンドを送ると、Pico が PC に対して HID 操作を行います。
+| ポート | 用途 |
+|--------|------|
+| CDC0 | 制御ポート（コマンド受付） |
+| CDC1 | デバイスA接続 |
+| CDC2 | デバイスB接続 |
+| CDC3 | キャプチャログ出力 |
 
-- `MOVE <x> <y>`
-  マウスカーソルを `x`, `y` の移動量ぶん相対移動します。実行時に LED が 2 回点滅します。
-- `CLICK LEFT`
-  左クリックします。実行時に LED が 2 回点滅します。
-- `CLICK RIGHT`
-  右クリックします。実行時に LED が 2 回点滅します。
-- `TESTKEY`
-  `@` を 1 文字送信します。実行時に LED が 4 回点滅します。
+CDC1 ↔ CDC2 は常時透過中継されます。CDC3 には通信ログが出力されます。
 
-## Build
+## 制御コマンド（CDC0）
 
-Docker コンテナ内でビルドします。
+| コマンド | 動作 |
+|----------|------|
+| `STATUS` | 現在のログ状態・信号線状態を返す |
+| `LOG HEX` | ログをHEX形式で出力（デフォルト） |
+| `LOG ASCII` | ログをASCII形式で出力 |
+| `LOG BOTH` | HEX+ASCII併記で出力 |
+| `LOG START` | タイムスタンプリセット＆ログ開始 |
+| `LOG STOP` | ログ出力を停止 |
+
+## ファームウェアのビルド
 
 ```shell
+cd firmware
 docker compose run --rm pico-dev bash
 cmake -S . -B build
 cmake --build build
 ```
 
-ビルド後の成果物は `build/pico-hid.uf2` です。
+成果物: `firmware/build/pico-vsp.uf2`
 
-## macOS
+## ホスト側ブリッジの使い方
 
-macOS では、接続時にキーボード設定アシスタントが表示されることがあります。
-このリポジトリの用途では、表示された場合はそのまま終了して構いません。
+CDC2 と実シリアルポートをブリッジしつつ、CDC3 のログをファイルに保存します。
 
-ユースケースの例:
+```shell
+cd host
+uv run bridge.py <CDC2> <実シリアルポート> <CDC3> <ログファイル>
+```
 
-- ダミー HDMI を外部ディスプレイとして接続する
-- Pico を USB キーボード/マウス兼シリアルデバイスとして接続する
-- MacBook を給電したままフタを閉じる
-- iPad などから Chrome Remote Desktop で接続する
+シリアルポートの通信設定はデフォルト 8N1（データ8ビット・パリティなし・ストップビット1）です。
 
-この構成で、フタを閉じたまま Mac を継続利用できます。
+| オプション | デフォルト | 指定可能な値 |
+|------------|-----------|-------------|
+| `--baudrate` | 115200 | 任意の整数 |
+| `--bytesize` | 8 | 5 / 6 / 7 / 8 |
+| `--parity` | N | N / E / O / M / S |
+| `--stopbits` | 1 | 1 / 1.5 / 2 |
+
+**Mac / Linux**
+
+```shell
+uv run bridge.py /dev/tty.usbmodem001 /dev/tty.usbserial-XXXX /dev/tty.usbmodem003 capture.log
+
+# 通信設定を変える場合
+uv run bridge.py /dev/tty.usbmodem001 /dev/tty.usbserial-XXXX /dev/tty.usbmodem003 capture.log \
+  --baudrate 9600 --bytesize 7 --parity E --stopbits 2
+```
+
+**Windows**
+
+```shell
+uv run bridge.py COM3 COM4 COM5 capture.log
+
+# 通信設定を変える場合
+uv run bridge.py COM3 COM4 COM5 capture.log --baudrate 9600 --bytesize 7 --parity E --stopbits 2
+```
+
+ポート名はデバイスマネージャーで確認してください。
+
+詳細は `SPEC.md` を参照してください。
+
+## ライセンス
+
+MIT License - 詳細は [LICENSE](LICENSE) を参照してください。
+
+本プロジェクトは以下のコンポーネントを使用しています。
+
+| コンポーネント | ライセンス |
+|---------------|-----------|
+| [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk) | BSD 3-Clause |
+| [TinyUSB](https://github.com/hathach/tinyusb) | MIT |
+| [pyserial](https://github.com/pyserial/pyserial) | BSD 3-Clause |
+| [Typer](https://github.com/fastapi/typer) | MIT |

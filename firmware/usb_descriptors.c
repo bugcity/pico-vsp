@@ -98,6 +98,8 @@ uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
     _desc_str[1] = 0x0409;
     chr_count = 1;
   } else {
+    uint8_t num_arr = sizeof(string_desc_arr) / sizeof(string_desc_arr[0]);
+    if (index >= num_arr) return NULL;
     const char* str = string_desc_arr[index];
     chr_count = strlen(str);
     if (chr_count > 31) chr_count = 31;

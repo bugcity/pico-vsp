@@ -66,10 +66,11 @@ uv run bridge.py <CDC2> <実シリアルポート> <CDC3> <ログファイル>
 **Mac / Linux**
 
 ```shell
-uv run bridge.py /dev/tty.usbmodem001 /dev/tty.usbserial-XXXX /dev/tty.usbmodem003 capture.log
+# CDC2（3番目のモデム）・CDC3（4番目のモデム）を指定する
+uv run bridge.py /dev/tty.usbmodem005 /dev/tty.usbserial-XXXX /dev/tty.usbmodem007 capture.log
 
 # 通信設定を変える場合
-uv run bridge.py /dev/tty.usbmodem001 /dev/tty.usbserial-XXXX /dev/tty.usbmodem003 capture.log \
+uv run bridge.py /dev/tty.usbmodem005 /dev/tty.usbserial-XXXX /dev/tty.usbmodem007 capture.log \
   --baudrate 9600 --bytesize 7 --parity E --stopbits 2
 ```
 

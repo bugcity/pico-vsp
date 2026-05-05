@@ -32,7 +32,6 @@ static void ctrl_write(const char *msg) {
 
 // CDC3にログ送信
 static void log_write(const char *msg) {
-    if (!tud_cdc_n_connected(3)) return;
     tud_cdc_n_write_str(3, msg);
     tud_cdc_n_write_flush(3);
 }
@@ -144,11 +143,12 @@ void exec_command(const char *cmd) {
 static void process_control(void) {
     while (tud_cdc_n_available(0)) {
         char c = (char)tud_cdc_n_read_char(0);
-        if (c == '\r') continue;
-        if (c == '\n') {
-            cmd_buffer[cmd_index] = '\0';
-            exec_command(cmd_buffer);
-            cmd_index = 0;
+        if (c == '\r' || c == '\n') {
+            if (cmd_index > 0) {
+                cmd_buffer[cmd_index] = '\0';
+                exec_command(cmd_buffer);
+                cmd_index = 0;
+            }
         } else if (cmd_index < MAX_CMD_LEN - 1) {
             cmd_buffer[cmd_index++] = c;
         }

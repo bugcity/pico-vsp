@@ -32,7 +32,6 @@ static void ctrl_write(const char *msg) {
 
 // CDC3にログ送信
 static void log_write(const char *msg) {
-    if (!tud_cdc_n_connected(3)) return;
     tud_cdc_n_write_str(3, msg);
     tud_cdc_n_write_flush(3);
 }

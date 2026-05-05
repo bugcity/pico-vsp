@@ -144,11 +144,12 @@ void exec_command(const char *cmd) {
 static void process_control(void) {
     while (tud_cdc_n_available(0)) {
         char c = (char)tud_cdc_n_read_char(0);
-        if (c == '\r') continue;
-        if (c == '\n') {
-            cmd_buffer[cmd_index] = '\0';
-            exec_command(cmd_buffer);
-            cmd_index = 0;
+        if (c == '\r' || c == '\n') {
+            if (cmd_index > 0) {
+                cmd_buffer[cmd_index] = '\0';
+                exec_command(cmd_buffer);
+                cmd_index = 0;
+            }
         } else if (cmd_index < MAX_CMD_LEN - 1) {
             cmd_buffer[cmd_index++] = c;
         }

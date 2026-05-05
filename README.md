@@ -45,14 +45,16 @@ cmake --build build
 
 成果物: `firmware/build/pico-vsp.uf2`
 
-## ホスト側ブリッジの使い方
+## ホスト側ツールの使い方
 
-CDC2 と実シリアルポートをブリッジしつつ、CDC3 のログをファイルに保存します。
+CDC2ブリッジと CDC3キャプチャを独立して、または同時に使用できます。
 
-```shell
-cd host
-uv run bridge.py <CDC2> <実シリアルポート> <CDC3> <ログファイル>
-```
+| オプション | 説明 |
+|------------|------|
+| `--cdc2 PORT` | CDC2ポート（ブリッジ用） |
+| `--serial PORT` | 実シリアルポート（ブリッジ用） |
+| `--cdc3 PORT` | CDC3ポート（キャプチャ用） |
+| `--log FILE` | ログファイル（キャプチャ用） |
 
 シリアルポートの通信設定はデフォルト 8N1（データ8ビット・パリティなし・ストップビット1）です。
 
@@ -66,21 +68,32 @@ uv run bridge.py <CDC2> <実シリアルポート> <CDC3> <ログファイル>
 **Mac / Linux**
 
 ```shell
-# CDC2（3番目のモデム）・CDC3（4番目のモデム）を指定する
-uv run bridge.py /dev/tty.usbmodem005 /dev/tty.usbserial-XXXX /dev/tty.usbmodem007 capture.log
+# CDC2ブリッジのみ（CDC2=3番目のモデム）
+uv run vsp.py --cdc2 /dev/tty.usbmodem005 --serial /dev/tty.usbserial-XXXX
+
+# CDC3キャプチャのみ（CDC3=4番目のモデム）
+uv run vsp.py --cdc3 /dev/tty.usbmodem007 --log capture.log
+
+# 両方同時
+uv run vsp.py --cdc2 /dev/tty.usbmodem005 --serial /dev/tty.usbserial-XXXX \
+              --cdc3 /dev/tty.usbmodem007 --log capture.log
 
 # 通信設定を変える場合
-uv run bridge.py /dev/tty.usbmodem005 /dev/tty.usbserial-XXXX /dev/tty.usbmodem007 capture.log \
-  --baudrate 9600 --bytesize 7 --parity E --stopbits 2
+uv run vsp.py --cdc2 /dev/tty.usbmodem005 --serial /dev/tty.usbserial-XXXX \
+              --baudrate 9600 --bytesize 7 --parity E --stopbits 2
 ```
 
 **Windows**
 
 ```shell
-uv run bridge.py COM3 COM4 COM5 capture.log
+# CDC2ブリッジのみ
+uv run vsp.py --cdc2 COM3 --serial COM4
 
-# 通信設定を変える場合
-uv run bridge.py COM3 COM4 COM5 capture.log --baudrate 9600 --bytesize 7 --parity E --stopbits 2
+# CDC3キャプチャのみ
+uv run vsp.py --cdc3 COM5 --log capture.log
+
+# 両方同時
+uv run vsp.py --cdc2 COM3 --serial COM4 --cdc3 COM5 --log capture.log
 ```
 
 ポート名はデバイスマネージャーで確認してください。

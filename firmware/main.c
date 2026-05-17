@@ -20,6 +20,7 @@ static LogMode  log_mode     = LOG_HEX;
 
 static bool cdc_dtr[4] = {false, false, false, false};
 static bool cdc_rts[4] = {false, false, false, false};
+static bool flow_ctrl   = false;
 
 static char cmd_buffer[MAX_CMD_LEN];
 static int  cmd_index = 0;
@@ -111,10 +112,12 @@ void exec_command(const char *cmd) {
         char buf[128];
         snprintf(buf, sizeof(buf),
                  "Log: %s (%s)\r\n"
+                 "Flow: %s\r\n"
                  "CDC1 DTR=%d RTS=%d\r\n"
                  "CDC2 DTR=%d RTS=%d\r\n",
                  log_active   ? "active" : "stopped",
                  log_mode == LOG_HEX ? "HEX" : log_mode == LOG_ASCII ? "ASCII" : "BOTH",
+                 flow_ctrl ? "ON" : "OFF",
                  cdc_dtr[1] ? 1 : 0, cdc_rts[1] ? 1 : 0,
                  cdc_dtr[2] ? 1 : 0, cdc_rts[2] ? 1 : 0);
         ctrl_write(buf);
@@ -133,6 +136,12 @@ void exec_command(const char *cmd) {
         ctrl_write("OK\r\n");
     } else if (strcmp(cmd, "LOG STOP") == 0) {
         log_active = false;
+        ctrl_write("OK\r\n");
+    } else if (strcmp(cmd, "FLOW ON") == 0) {
+        flow_ctrl = true;
+        ctrl_write("OK\r\n");
+    } else if (strcmp(cmd, "FLOW OFF") == 0) {
+        flow_ctrl = false;
         ctrl_write("OK\r\n");
     } else if (cmd[0] != '\0') {
         ctrl_write("ERROR: unknown command\r\n");
@@ -160,22 +169,34 @@ static void relay_data(void) {
     uint8_t buf[64];
 
     // CDC1 → CDC2
-    if (tud_cdc_n_available(1)) {
-        uint32_t count = tud_cdc_n_read(1, buf, sizeof(buf));
-        if (count > 0) {
-            tud_cdc_n_write(2, buf, count);
-            tud_cdc_n_write_flush(2);
-            log_data(1, 2, buf, count);
+    if (!flow_ctrl || cdc_rts[1]) {
+        uint32_t avail = tud_cdc_n_available(1);
+        uint32_t space = tud_cdc_n_write_available(2);
+        if (avail > 0 && space > 0) {
+            uint32_t to_read = avail < sizeof(buf) ? avail : sizeof(buf);
+            if (to_read > space) to_read = space;
+            uint32_t count = tud_cdc_n_read(1, buf, to_read);
+            if (count > 0) {
+                tud_cdc_n_write(2, buf, count);
+                tud_cdc_n_write_flush(2);
+                log_data(1, 2, buf, count);
+            }
         }
     }
 
     // CDC2 → CDC1
-    if (tud_cdc_n_available(2)) {
-        uint32_t count = tud_cdc_n_read(2, buf, sizeof(buf));
-        if (count > 0) {
-            tud_cdc_n_write(1, buf, count);
-            tud_cdc_n_write_flush(1);
-            log_data(2, 1, buf, count);
+    if (!flow_ctrl || cdc_rts[2]) {
+        uint32_t avail = tud_cdc_n_available(2);
+        uint32_t space = tud_cdc_n_write_available(1);
+        if (avail > 0 && space > 0) {
+            uint32_t to_read = avail < sizeof(buf) ? avail : sizeof(buf);
+            if (to_read > space) to_read = space;
+            uint32_t count = tud_cdc_n_read(2, buf, to_read);
+            if (count > 0) {
+                tud_cdc_n_write(1, buf, count);
+                tud_cdc_n_write_flush(1);
+                log_data(2, 1, buf, count);
+            }
         }
     }
 }

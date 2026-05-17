@@ -213,10 +213,6 @@ int main(void) {
     sleep_ms(500);
     reset_usb_phy();
     tusb_init();
-    sleep_ms(200);
-    tud_disconnect();
-    sleep_ms(200);
-    tud_connect();
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);

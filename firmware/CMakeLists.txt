@@ -18,6 +18,7 @@ target_link_libraries(pico_vsp
   pico_stdlib
   tinyusb_device
   tinyusb_board
+  pico_unique_id
 )
 
 pico_enable_stdio_usb(pico_vsp 0)

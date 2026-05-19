@@ -54,6 +54,8 @@ def main(
     bytesize: int = typer.Option(8, "--bytesize", help="データビット数 (5/6/7/8)"),
     parity: str = typer.Option("N", "--parity", help="パリティ (N/E/O/M/S)"),
     stopbits: float = typer.Option(1.0, "--stopbits", help="ストップビット (1/1.5/2)"),
+    rtscts: bool = typer.Option(False, "--rtscts", help="RTS/CTSハードウェアフロー制御を有効化"),
+    xonxoff: bool = typer.Option(False, "--xonxoff", help="XON/XOFFソフトウェアフロー制御を有効化"),
 ) -> None:
     bridge_mode = cdc2 is not None or serial_port is not None
     capture_mode = cdc3 is not None or log_file is not None
@@ -100,14 +102,16 @@ def main(
         if bridge_mode:
             typer.echo(f"[vsp] opening CDC2:   {cdc2}")
             typer.echo(f"[vsp] opening serial: {serial_port} @ {baudrate} {bytesize}{parity.upper()}{stopbits:g}")
-            cdc2_ser = serial.Serial(cdc2, timeout=0.1)
+            cdc2_ser = serial.Serial(cdc2, timeout=0.01)
             real_ser = serial.Serial(
                 serial_port,
                 baudrate=baudrate,
                 bytesize=bytesize_map[bytesize],
                 parity=parity_map[parity.upper()],
                 stopbits=stopbits_map[stopbits],
-                timeout=0.1,
+                rtscts=rtscts,
+                xonxoff=xonxoff,
+                timeout=0.01,
             )
             ports += [cdc2_ser, real_ser]
             threads += [
@@ -118,7 +122,7 @@ def main(
         if capture_mode:
             typer.echo(f"[vsp] opening CDC3:  {cdc3}")
             typer.echo(f"[vsp] log file:      {log_file}")
-            cdc3_ser = serial.Serial(cdc3, timeout=0.1)
+            cdc3_ser = serial.Serial(cdc3, timeout=0.01)
             ports.append(cdc3_ser)
             threads.append(threading.Thread(target=capture_log, args=(cdc3_ser, log_file), daemon=True))
 
